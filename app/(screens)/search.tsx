@@ -4,9 +4,7 @@ import {
   TextInput,
   FlatList,
   Text,
-  Image,
   StyleSheet,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
@@ -19,18 +17,8 @@ import {
 } from "firebase/firestore";
 import { FIREBASE_AUTH, FIREBASE_DB } from "@/lib/firebase/firebaseConfig";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { matchChars } from "@/lib/matchChars";
-import verification_icon from "@/assets/images/checkmark.png";
-import { router } from "expo-router";
-
-interface User {
-  id: string;
-  name: string;
-  profileImage: string;
-  userName: string;
-  bio: string;
-  verification: boolean;
-}
+import RenderUserItem from "@/components/UserItem";
+import { User } from "@/app/types/user";
 
 const SearchScreen = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -61,6 +49,7 @@ const SearchScreen = () => {
                 userData.profileImage || "https://via.placeholder.com/50",
               bio: userData.bio || "",
               verification: userData.verification || false,
+              verification_type: userData.verification_type || "",
             });
           }
         });
@@ -74,26 +63,6 @@ const SearchScreen = () => {
       setSearchResults([]);
     }
   };
-
-  const renderUserItem = ({ item }: { item: User }) => (
-    <TouchableOpacity 
-      style={styles.userItem}  
-      onPress={() => {
-        router.push(`/Friend/${item.id}`);
-      }}
-    >
-      <Image source={{ uri: item.profileImage }} style={styles.profileImage} />
-      <View style={styles.userInfo}>
-        <View style={styles.nameContainer}>
-          <Text style={styles.userName}>{item.name}</Text>
-          {item.verification && (
-            <Image source={verification_icon} style={styles.verifiedIcon} />
-          )}
-        </View>
-        <Text style={styles.userBio}>{matchChars(10, item.bio)}</Text>
-      </View>
-    </TouchableOpacity>
-  );
 
   return (
     <SafeAreaView edges={["top"]} style={styles.safeArea}>
@@ -118,7 +87,7 @@ const SearchScreen = () => {
         </View>
         <FlatList
           data={searchResults}
-          renderItem={renderUserItem}
+          renderItem={({ item }) => <RenderUserItem item={item} />}
           keyExtractor={(item) => item.id}
           ListEmptyComponent={
             <Text style={styles.emptyText}>
@@ -161,41 +130,6 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     flexGrow: 1,
-  },
-  userItem: {
-    flexDirection: "row",
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E1E8ED",
-  },
-  profileImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 15,
-  },
-  userInfo: {
-    justifyContent: "center",
-    flex: 1,
-  },
-  nameContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  userName: {
-    fontWeight: "bold",
-    fontSize: 16,
-    color: "#14171A",
-    marginBottom: 2,
-  },
-  verifiedIcon: {
-    width: 16,
-    height: 16,
-    marginLeft: 5,
-  },
-  userBio: {
-    color: "#14171A",
-    fontSize: 14,
   },
   emptyText: {
     textAlign: "center",

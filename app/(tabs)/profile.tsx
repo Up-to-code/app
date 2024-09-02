@@ -15,7 +15,7 @@ import { router } from "expo-router";
 import GetUserPosts from "@/components/GetUserPosts";
 import verification_icon from "@/assets/images/verification64.png";
 import user_icon from "@/assets/images/user.png";
-
+import verification_icon_gold from "@/assets/images/verification_icon_gold.png";
 const ProfileScreen = () => {
   const user = FIREBASE_AUTH.currentUser;
   const [userData, setUserData] = useState({
@@ -25,6 +25,7 @@ const ProfileScreen = () => {
     posts: 0,
     FriendCount: 0,
     verification: false,
+    verification_type: "",
   });
   const [refreshing, setRefreshing] = useState(false);
 
@@ -39,8 +40,8 @@ const ProfileScreen = () => {
           posts: data.postCount || 0,
           FriendCount: data.FriendCount || 0,
           verification: data.verification || false,
+          verification_type: data.verification_type || "gray",
         });
-        console.log(data);
       } catch (error) {
         console.error("Error fetching user data:", error);
       }
@@ -77,15 +78,20 @@ const ProfileScreen = () => {
             ) : (
               <Image source={user_icon} style={styles.profileImage} />
             )}
+          </View>
+          <View className="flex flex-row items-center gap-2">
+            <Text style={styles.name}>{userData.name}</Text>
             {userData.verification && (
               <Image
-                source={verification_icon}
-                style={styles.verificationIcon}
+                source={
+                  userData.verification_type === "gold"
+                    ? verification_icon_gold
+                    : verification_icon
+                }
+                className="w-8 h-8  "
               />
             )}
           </View>
-
-          <Text style={styles.name}>{userData.name}</Text>
           <Text style={styles.bio}>{userData.bio}</Text>
         </View>
 

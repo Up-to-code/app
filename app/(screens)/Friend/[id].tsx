@@ -7,36 +7,57 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { getUserData } from "@/lib/firebase/getUsers";
 import { addFriend } from "@/lib/firebase/friendsServes/addfriend";
 import { removeFriend } from "@/lib/firebase/friendsServes/removeFriend";
 import { acceptFriend } from "@/lib/firebase/friendsServes/acceptFriend";
-import { FIREBASE_AUTH } from "@/lib/firebase/firebaseConfig";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import user_icon from "@/assets/images/user.png";
+import { getFiend } from "@/lib/firebase/friendsServes/getFiend";
+import Button from "@/components/ui/Button";
 type FriendStatus = "none" | "pending" | "friend";
 
 const FriendScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [userData, setUserData] = useState<any | null>(null);
   const [friendStatus, setFriendStatus] = useState<FriendStatus>("none");
-
+  const [loading, setLoading] = useState(false);
+  const [isFriendLoading, setIsFriendLoding] = useState(false);
   useEffect(() => {
     const fetchUserData = async () => {
       if (typeof id !== "string") return;
       try {
         const data = await getUserData(id);
         setUserData(data);
-        // TODO: Fetch friend status from Firestore
       } catch (error) {
         console.error("Error fetching user data:", error);
       }
     };
 
     fetchUserData();
+  }, [id]);
+
+  useEffect(() => {
+    const fetchFriendStatus = async () => {
+      console.log("id", id);
+      setIsFriendLoding(true);
+      if (typeof id !== "string") return;
+      try {
+        const friendStatus_id = await getFiend(id);
+         if (friendStatus_id) {
+          setFriendStatus("friend");
+        }
+      } catch (error) {
+        console.error("Error fetching friend status:", error);
+      } finally {
+        setIsFriendLoding(false);
+      }
+    };
+    fetchFriendStatus();
   }, [id]);
 
   const handleAddFriend = async () => {
@@ -72,7 +93,7 @@ const FriendScreen = () => {
   if (!userData) {
     return (
       <View style={styles.loadingContainer}>
-        <Text>Loading...</Text>
+        <ActivityIndicator size="large" color="#1DA1F2" />
       </View>
     );
   }
@@ -101,7 +122,6 @@ const FriendScreen = () => {
         </View>
         <View style={styles.userInfo}>
           <Text style={styles.name}>{userData.name}</Text>
-          <Text style={styles.username}>@{userData.userName}</Text>
           <Text style={styles.bio}>{userData.bio}</Text>
           <View style={styles.statsContainer}>
             <Text style={styles.statsText}>
@@ -112,28 +132,51 @@ const FriendScreen = () => {
             </Text>
           </View>
         </View>
+ 
+      {
+        isFriendLoading ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <>
+            {friendStatus === "none" && (
+              <TouchableOpacity
+                style={styles.button}
+                onPress={handleAddFriend}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.buttonText}>Add Friend</Text>
+                )}
+              </TouchableOpacity>
+            )}
+            {friendStatus === "pending" && (
+              <TouchableOpacity
+                style={[styles.button, styles.pendingButton]}
+                onPress={handleAcceptFriend}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.buttonText}>Pending</Text>
+                )}
+              </TouchableOpacity>
+            )}
+            {friendStatus === "friend" && (
+              <Button
+                className="bg-zinc-700"
+                activeOpacity={0.8}
+                onPress={() => router.push(`/chat/${id}`)}
+                title="Chat"
+              />
+            )}
+          </>
+        )
+      }
 
-        {friendStatus === "none" && (
-          <TouchableOpacity style={styles.button} onPress={handleAddFriend}>
-            <Text style={styles.buttonText}>Add Friend</Text>
-          </TouchableOpacity>
-        )}
-        {friendStatus === "pending" && (
-          <TouchableOpacity
-            style={[styles.button, styles.pendingButton]}
-            onPress={handleAcceptFriend}
-          >
-            <Text style={styles.buttonText}>Pending</Text>
-          </TouchableOpacity>
-        )}
-        {friendStatus === "friend" && (
-          <TouchableOpacity
-            style={[styles.button, styles.followingButton]}
-            onPress={handleRemoveFriend}
-          >
-            <Text style={styles.followingButtonText}>Friends</Text>
-          </TouchableOpacity>
-        )}
+         
       </ScrollView>
     </SafeAreaView>
   );

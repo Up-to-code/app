@@ -115,7 +115,7 @@ const ChatScreen: React.FC = () => {
       }
     }
   }, [loading, messages]);
-
+  const BackRef = useRef<TouchableOpacity>(null);
   const renderItem = ({ item }: { item: Message }) => (
     <View
       style={[
@@ -134,8 +134,17 @@ const ChatScreen: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          disabled={loading}
+          onPress={() => {
+            if (loading) return;
+            BackRef.current?.blur();
+            Keyboard.dismiss();
+            router.back();
+          }}
+          delayPressIn={loading ? 1000 : 0}
+          hitSlop={1000}
           style={styles.backButton}
+          ref={BackRef}
         >
           <Ionicons name="arrow-back" size={24} color="#1DA1F2" />
         </TouchableOpacity>
@@ -145,27 +154,27 @@ const ChatScreen: React.FC = () => {
         />
         <Text style={styles.headerTitle}>{userName || "Chat"}</Text>
       </View>
-
+ 
       <View style={styles.messagesContainer}>
         {loading ? (
-          <ActivityIndicator size="large" color="#1DA1F2" />
-        ) : (
-            
-                messages.length > 0 ? (  <FlashList
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#1DA1F2" />
+          </View>
+        ) : messages.length > 0 ? (
+          <FlashList
             ref={listRef}
             data={messages}
             renderItem={renderItem}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
             estimatedItemSize={100}
-          /> ) : (
-            <View style={styles.noMessagesContainer}>
-              <Text style={styles.noMessagesText}>No messages yet</Text>
-            </View>
-          )
-            
-        
+          />
+        ) : (
+          <View style={styles.noMessagesContainer}>
+            <Text style={styles.noMessagesText}>No messages yet</Text>
+          </View>
         )}
+ 
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
@@ -189,6 +198,11 @@ const ChatScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   container: {
     flex: 1,
     backgroundColor: "#fff",
@@ -258,6 +272,7 @@ const styles = StyleSheet.create({
     paddingLeft: 15,
     backgroundColor: "#e5e5e5",
     color: "#14171A",
+    maxHeight: 60,
   },
   sendButton: {
     marginLeft: 10,
@@ -267,6 +282,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 10,
+    maxHeight: 60,
   },
   listContent: {
     padding: 10,

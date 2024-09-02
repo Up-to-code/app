@@ -5,13 +5,14 @@ import { FlashList } from '@shopify/flash-list';
 import { getFriends } from '@/lib/firebase/friendsServes/getfriends';
 import { getUserData } from '@/lib/firebase/getUsers';
 import { router } from 'expo-router';
-
+import verification_icon from "@/assets/images/checkmark.png";
 interface ChatItem {
   id: string;
   name: string;
   lastMessage: string;
   time: string;
   profileImage: string;
+  verification: boolean;
 }
 
 const ChatListScreen = () => {
@@ -51,7 +52,15 @@ const ChatListScreen = () => {
     <TouchableOpacity style={styles.chatItem} key={item.id} onPress={() => router.push(`/chat/${item.id}`)}>
       <Image source={{ uri: item.profileImage }} style={styles.avatar} />
       <View style={styles.chatInfo}>
-        <Text style={styles.chatName}>{item.name}</Text>
+        <View className='flex flex-row items-center justify-between'>
+          <Text style={styles.chatName}>{item.name}</Text>
+           {
+            item.verification ? (
+              <Image source={verification_icon} className='w-4 h-4' />
+            ) : null
+           }
+        </View>
+        
         <Text style={styles.lastMessage}>{item.lastMessage}</Text>
       </View>
       <Text style={styles.chatTime}>{item.time}</Text>
