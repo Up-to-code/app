@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   TextInput,
@@ -7,6 +7,8 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -14,54 +16,69 @@ import {
   query as firestoreQuery,
   where,
   getDocs,
+  limit,
 } from "firebase/firestore";
 import { FIREBASE_AUTH, FIREBASE_DB } from "@/lib/firebase/firebaseConfig";
 import { SafeAreaView } from "react-native-safe-area-context";
 import RenderUserItem from "@/components/UserItem";
 import { User } from "@/app/types/user";
+import { debounce } from "lodash";
 
 const SearchScreen = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const uid = FIREBASE_AUTH.currentUser?.uid;
 
-  const handleSearch = async (query: string) => {
-    setSearchQuery(query);
-    if (query.length > 0) {
-      try {
-        const usersRef = collection(FIREBASE_DB, "users");
-        const q = firestoreQuery(
-          usersRef,
-          where("name", ">=", query),
-          where("name", "<=", query + "\uf8ff")
-        );
-        const querySnapshot = await getDocs(q);
+  const handleSearch = useCallback(
+    debounce(async (query: string) => {
+      if (query.length > 0) {
+        setIsLoading(true);
+        try {
+          const usersRef = collection(FIREBASE_DB, "users");
+          const q = firestoreQuery(
+            usersRef,
+            where("name", ">=", query),
+            where("name", "<=", query + "\uf8ff"),
+            limit(20)
+          );
+          const querySnapshot = await getDocs(q);
 
-        const results: User[] = [];
-        querySnapshot.forEach((doc) => {
-          const userData = doc.data() as User;
-          if (userData.id !== uid) {
-            results.push({
-              id: doc.id,
-              name: userData.name,
-              userName: userData.userName || "",
-              profileImage:
-                userData.profileImage || "https://via.placeholder.com/50",
-              bio: userData.bio || "",
-              verification: userData.verification || false,
-              verification_type: userData.verification_type || "",
-            });
-          }
-        });
+          const results: User[] = [];
+          querySnapshot.forEach((doc) => {
+            const userData = doc.data() as User;
+            if (userData.id !== uid) {
+              results.push({
+                id: doc.id,
+                name: userData.name,
+                userName: userData.userName || "",
+                profileImage:
+                  userData.profileImage || "https://via.placeholder.com/50",
+                bio: userData.bio || "",
+                verification: userData.verification || false,
+                verification_type: userData.verification_type || "",
+              });
+            }
+          });
 
-        setSearchResults(results);
-      } catch (error) {
-        console.error("Error searching users:", error);
+          setSearchResults(results);
+        } catch (error) {
+          console.error("Error searching users:", error);
+          setSearchResults([]);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
         setSearchResults([]);
+        setIsLoading(false);
       }
-    } else {
-      setSearchResults([]);
-    }
+    }, 300),
+    [uid]
+  );
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    setSearchResults([]);
   };
 
   return (
@@ -69,6 +86,7 @@ const SearchScreen = () => {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
       >
         <View style={styles.searchBar}>
           <Ionicons
@@ -82,22 +100,35 @@ const SearchScreen = () => {
             placeholder="Search Twitter"
             placeholderTextColor="#657786"
             value={searchQuery}
-            onChangeText={handleSearch}
+            onChangeText={(text) => {
+              setSearchQuery(text);
+              handleSearch(text);
+            }}
+            returnKeyType="search"
           />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+              <Ionicons name="close-circle" size={20} color="#657786" />
+            </TouchableOpacity>
+          )}
         </View>
-        <FlatList
-          data={searchResults}
-          renderItem={({ item }) => <RenderUserItem item={item} />}
-          keyExtractor={(item) => item.id}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>
-              {searchQuery
-                ? "No results found"
-                : "Try searching for people, topics, or keywords"}
-            </Text>
-          }
-          contentContainerStyle={styles.listContainer}
-        />
+        {isLoading ? (
+          <ActivityIndicator style={styles.loader} size="large" color="#1DA1F2" />
+        ) : (
+          <FlatList
+            data={searchResults}
+            renderItem={({ item }) => <RenderUserItem item={item} />}
+            keyExtractor={(item) => item.id}
+            ListEmptyComponent={
+              <Text style={styles.emptyText}>
+                {searchQuery
+                  ? "No results found"
+                  : "Try searching for people, topics, or keywords"}
+              </Text>
+            }
+            contentContainerStyle={styles.listContainer}
+          />
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -128,6 +159,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#14171A",
   },
+  clearButton: {
+    padding: 5,
+  },
   listContainer: {
     flexGrow: 1,
   },
@@ -136,6 +170,9 @@ const styles = StyleSheet.create({
     marginTop: 40,
     color: "#657786",
     fontSize: 16,
+  },
+  loader: {
+    marginTop: 20,
   },
 });
 

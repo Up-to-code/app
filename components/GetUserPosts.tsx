@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { collection, query, where, getDocs, orderBy, DocumentData } from 'firebase/firestore';
 import { FIREBASE_DB, FIREBASE_AUTH } from '@/lib/firebase/firebaseConfig';
-import Post, { PostProps } from '@/components/Post';
+import Post, { PostProps } from '@/components/post/Post';
 import { FlashList } from '@shopify/flash-list';
 
 const GetUserPosts = () => {

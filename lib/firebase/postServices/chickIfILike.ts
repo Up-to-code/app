@@ -1,7 +1,7 @@
 import { doc, getDoc } from "firebase/firestore";
 import { FIREBASE_AUTH, FIREBASE_DB } from "../firebaseConfig";
 
-export const chickIfILike = async (postId: string) => {
+export const checkIfILike = async (postId: string) => {
   const userId = FIREBASE_AUTH.currentUser?.uid as string;
   if (!userId) {
     return false;

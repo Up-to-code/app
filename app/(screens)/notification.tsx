@@ -41,6 +41,7 @@ const WhitelistScreen = () => {
               id: item.id,
               name: userData.name,
               profileImage: userData.profileImage,
+              
             };
           })
         );

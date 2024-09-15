@@ -3,16 +3,16 @@ import { router, SplashScreen, Stack } from "expo-router";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { useEffect, useState } from "react";
 import { useFonts } from "expo-font";
-import { getUserData } from "@/lib/firebase/Serves";
+import { getUserData } from "@/lib/firebase/Services";
 import useAuthStore from "@/lib/store/authStore";
-
 SplashScreen.preventAutoHideAsync();
-
+ 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     "Cairo-Bold": require("../assets/fonts/Cairo-Bold.ttf"),
     "Cairo-ExtraBold": require("../assets/fonts/Cairo-ExtraBold.ttf"),
     "Cairo-Medium": require("../assets/fonts/Cairo-Medium.ttf"),
+    "Cairo-Regular": require("../assets/fonts/Cairo-Regular.ttf"),
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -72,8 +72,10 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false, animation: "fade" }}>
-      <Stack.Screen name="index" />
-    </Stack>
+ 
+      <Stack screenOptions={{ headerShown: false, animation: "fade" }}>
+        <Stack.Screen name="index" />
+      </Stack>
+   
   );
 }

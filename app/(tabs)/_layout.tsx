@@ -43,7 +43,13 @@ const Layout = () => {
                 : "Profile"
             }
             logo={["home", "list"].includes(route.name)}
-            rightIcon={route.name === "home" ? "search" : route.name === "list" ? "search" : "repeat"}
+            rightIcon={
+              route.name === "home"
+                ? "search"
+                : route.name === "list"
+                ? "search"
+                : "repeat"
+            }
             leftIcon={route.name === "profile" ? "cog" : null}
             onRightPress={() => {
               if (["home", "list"].includes(route.name)) {

@@ -1,17 +1,24 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, TextInput, Image, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, TextInput, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Text, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import Button from '@/components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
-import { createPost } from '@/lib/firebase/createpost';
+import { createPost, createPostWithYouTube } from '@/lib/firebase/createpost';
 import { FIREBASE_AUTH } from '@/lib/firebase/firebaseConfig';
- 
+import { getThumbnail, ThumbnailData } from '@/lib/getThumbnail';
+
 const CreatePostScreen = () => {
   const [postText, setPostText] = useState('');
   const [image, setImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const user = FIREBASE_AUTH.currentUser;
+  const [youTubeVideo, setYouTubeVideo] = useState<{
+    url: string;
+    thumbnail: ThumbnailData | null;
+    isYouTubeVideo: boolean;
+    isOpen: boolean;
+  } | null>(null);
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -23,28 +30,71 @@ const CreatePostScreen = () => {
 
     if (!result.canceled) {
       setImage(result.assets[0].uri);
+      setYouTubeVideo(null);
     }
   };
 
   const handlePost = async () => {
     if (!user) {
-      console.error('User not authenticated');
+      Alert.alert('Error', 'User not authenticated');
+      return;
+    }
+    if (!postText.trim() && !image && !youTubeVideo?.url) {
+      Alert.alert('Error', 'Please add some content to your post');
       return;
     }
 
     setIsLoading(true);
     try {
-      await createPost(user.uid, postText, image as string);
-      console.log('Post created successfully');
-      // Reset form after successful post
+      if (youTubeVideo?.url && youTubeVideo.thumbnail) {
+        await createPostWithYouTube(user.uid, postText, youTubeVideo.url, youTubeVideo.thumbnail);
+      } else {
+        await createPost(user.uid, postText, image || undefined);
+      }
+       
+      Alert.alert('Success', 'Post created successfully');
       setPostText('');
       setImage(null);
+      setYouTubeVideo(null);
     } catch (error) {
       console.error('Error creating post:', error);
+      Alert.alert('Error', 'Failed to create post. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const extractAndProcessYouTubeUrl = async () => {
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      const match = postText.match(urlRegex);
+      if (match) {
+        const url = match[0];
+        try {
+          setIsLoading(true);
+          const thumbnailData = await getThumbnail(url);
+          if (thumbnailData.error) {
+            console.error('Error fetching thumbnail:', thumbnailData.error);
+          } else {
+            setYouTubeVideo({
+              url,
+              thumbnail: thumbnailData.thumbnail,
+              isYouTubeVideo: true,
+              isOpen: true,
+            });
+            setImage(null);
+            setPostText(postText.replace(url, '').trim());
+          }
+        } catch (error) {
+          console.error('Error processing YouTube URL:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    extractAndProcessYouTubeUrl();
+  }, [postText]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -58,12 +108,26 @@ const CreatePostScreen = () => {
           onChangeText={setPostText}
           editable={!isLoading}
         />
-        {image && <Image source={{ uri: image }} style={styles.image} />}
+        {youTubeVideo?.thumbnail?.high && (
+          <Image
+            source={{ uri: youTubeVideo.thumbnail.high.url }}
+            style={styles.youtubeThumbnail}
+          />
+        )}
         <View style={styles.actionButtons}>
-          <TouchableOpacity onPress={pickImage} style={styles.actionButton} disabled={isLoading}>
+          <TouchableOpacity 
+            onPress={() => {
+              pickImage();
+              setYouTubeVideo(null);
+            }} 
+            style={styles.actionButton} 
+            disabled={isLoading}
+          >
             <Ionicons name="image-outline" size={24} color="#4267B2" />
+            <Text style={styles.actionButtonText}>Add Image</Text>
           </TouchableOpacity>
         </View>
+
         {isLoading ? (
           <ActivityIndicator size="large" color="#4267B2" style={styles.loader} />
         ) : (
@@ -71,7 +135,7 @@ const CreatePostScreen = () => {
             title="Create Post"
             onPress={handlePost}
             style={styles.createPostButton}
-            disabled={isLoading}
+            disabled={isLoading || (!postText.trim() && !image && !youTubeVideo?.url)}
           />
         )}
       </ScrollView>
@@ -83,21 +147,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  postButton: {
-    backgroundColor: '#f0f2f5',
-    borderRadius: 20,
-  },
-  postButtonText: {
-    color: '#000',
   },
   scrollContent: {
     padding: 20,
@@ -112,28 +161,33 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     color: '#000',
   },
-  image: {
-    width: '100%',
-    height: 250,
-    resizeMode: 'cover',
-    borderRadius: 12,
-    marginBottom: 20,
-  },
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
     marginBottom: 20,
   },
   actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#F0F2F5',
     padding: 10,
-    borderRadius: 50,
+    borderRadius: 12,
+  },
+  actionButtonText: {
+    marginLeft: 10,
+    color: '#4267B2',
+    fontSize: 16,
   },
   createPostButton: {
     marginTop: 20,
   },
   loader: {
     marginTop: 20,
+  },
+  youtubeThumbnail: {
+    width: '100%',
+    height: 200,
+    marginBottom: 20,
   },
 });
 

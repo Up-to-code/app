@@ -4,8 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 
-import Post, { PostProps } from '@/components/Post';
-import { getPosts } from '@/lib/firebase/postServes/getPost';
+import Post, { PostProps } from '@/components/post/Post';
+import { getPosts } from '@/lib/firebase/postServices/getPost';
  
 const HomeScreen = () => {
     const [posts, setPosts] = useState<PostProps[]>([]);

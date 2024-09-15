@@ -5,8 +5,8 @@ import verification_icon from "@/assets/images/checkmark.png";
 import verification_icon_gold from "@/assets/images/verification_icon_gold.png";
 import { matchChars } from "@/lib/matchChars";
 import { User } from '@/app/types/user';
- 
- 
+import { truncateText } from '@/lib/truncateText';
+
 const RenderUserItem: React.FC<{ item: User }> = ({ item }) => (
   <TouchableOpacity 
     style={styles.userItem}  
@@ -17,37 +17,37 @@ const RenderUserItem: React.FC<{ item: User }> = ({ item }) => (
     <Image source={{ uri: item.profileImage }} style={styles.profileImage} />
     <View style={styles.userInfo}>
       <View style={styles.nameContainer}>
-        <Text style={styles.userName}>{item.name}</Text>
+        <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">{item.name}</Text>
         {item.verification && (
-          <Image source={(
-            item.verification_type === "gold" ? verification_icon_gold : verification_icon
-          )} style={styles.verifiedIcon} />
+          <Image 
+            source={item.verification_type === "gold" ? verification_icon_gold : verification_icon} 
+            style={styles.verifiedIcon} 
+          />
         )}
       </View>
-      <Text style={styles.userBio}>{matchChars(10, item.bio)}</Text>
+       <Text style={styles.userBio} numberOfLines={2} ellipsizeMode="tail">{truncateText(item.bio, 100)}</Text>
     </View>
   </TouchableOpacity>
 );
- 
+
 export default RenderUserItem;
+
 const styles = StyleSheet.create({
   userItem: {
     flexDirection: 'row',
-    padding: 15,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E1E8ED',
-    backgroundColor: '#F5F8FA',
-    borderRadius: 10,
-    marginVertical: 5,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
   },
   profileImage: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    marginRight: 15,
+    marginRight: 12,
   },
   userInfo: {
-    justifyContent: 'center',
     flex: 1,
   },
   nameContainer: {
@@ -58,14 +58,20 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
     color: '#14171A',
+    flex: 1,
   },
   verifiedIcon: {
-    width: 20,
-    height: 20,
-    marginLeft: 5,
+    width: 16,
+    height: 16,
+    marginLeft: 4,
+  },
+  userHandle: {
+    fontSize: 14,
+    color: '#657786',
+    marginBottom: 4,
   },
   userBio: {
-    color: '#090b0d',
-    marginTop: 5,
+    fontSize: 14,
+    color: '#14171A',
   },
 });

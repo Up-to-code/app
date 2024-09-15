@@ -6,16 +6,18 @@ import {
   Image,
   ScrollView,
   RefreshControl,
+  ActivityIndicator,
+  ImageBackground,
+  TouchableOpacity,
+  Dimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import Button from "@/components/ui/Button";
 import { FIREBASE_AUTH } from "@/lib/firebase/firebaseConfig";
 import { getUserData } from "@/lib/firebase/getUsers";
 import { router } from "expo-router";
 import GetUserPosts from "@/components/GetUserPosts";
 import verification_icon from "@/assets/images/verification64.png";
 import user_icon from "@/assets/images/user.png";
-import verification_icon_gold from "@/assets/images/verification_icon_gold.png";
+
 const ProfileScreen = () => {
   const user = FIREBASE_AUTH.currentUser;
   const [userData, setUserData] = useState({
@@ -26,8 +28,10 @@ const ProfileScreen = () => {
     FriendCount: 0,
     verification: false,
     verification_type: "",
+    backgroundImage: "",
   });
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const fetchUserData = async () => {
     if (user) {
@@ -41,9 +45,12 @@ const ProfileScreen = () => {
           FriendCount: data.FriendCount || 0,
           verification: data.verification || false,
           verification_type: data.verification_type || "gray",
+          backgroundImage: data.backgroundImage || "",
         });
       } catch (error) {
         console.error("Error fetching user data:", error);
+      } finally {
+        setLoading(false);
       }
     }
   };
@@ -62,138 +69,162 @@ const ProfileScreen = () => {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        <View style={styles.header}>
-          <View style={styles.profileImageContainer}>
-            {userData.profileImage ? (
+    <View style={styles.container}>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+        </View>
+      ) : (
+        <ScrollView
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          <View style={styles.headerContainer}>
+            <ImageBackground
+              source={{ uri: userData.backgroundImage }}
+              style={styles.headerBackground}
+            >
+              <View style={styles.headerOverlay} />
+            </ImageBackground>
+            <View style={styles.profileImageContainer}>
               <Image
                 style={styles.profileImage}
-                source={{ uri: userData.profileImage }}
+                source={{ uri: userData.profileImage || user_icon }}
               />
-            ) : (
-              <Image source={user_icon} style={styles.profileImage} />
-            )}
+            </View>
           </View>
-          <View className="flex flex-row items-center gap-2">
-            <Text style={styles.name}>{userData.name}</Text>
-            {userData.verification && (
-              <Image
-                source={
-                  userData.verification_type === "gold"
-                    ? verification_icon_gold
-                    : verification_icon
-                }
-                className="w-8 h-8  "
-              />
-            )}
+
+          <View style={styles.contentContainer}>
+            <View style={styles.nameContainer}>
+              <Text style={styles.name}>{userData.name}</Text>
+              {userData.verification && (
+                <Image
+                  source={verification_icon}
+                  style={styles.verificationIcon}
+                />
+              )}
+            </View>
+            <Text style={styles.bio}>{userData.bio}</Text>
+            <View style={styles.statsContainer}>
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>{userData.FriendCount}</Text>
+                <Text style={styles.statLabel}>Friends</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>{userData.posts}</Text>
+                <Text style={styles.statLabel}>Posts</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={handleEditProfile}
+            >
+              <Text style={styles.editButtonText}>Edit Profile</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.bio}>{userData.bio}</Text>
-        </View>
-
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{userData.posts}</Text>
-            <Text style={styles.statLabel}>Posts</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{userData.FriendCount}</Text>
-            <Text style={styles.statLabel}>Friends</Text>
-          </View>
-        </View>
-
-        <Button
-          title="Edit Profile"
-          onPress={handleEditProfile}
-          style={styles.editButton}
-        />
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About</Text>
-          <Text style={styles.sectionContent}>{userData.bio}</Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Posts</Text>
-          <GetUserPosts />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      )}
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
   },
-  header: {
-    alignItems: "center",
-    padding: 20,
-    backgroundColor: "white",
+  headerContainer: {
+    height: 200,
+    position: "relative",
+  },
+  headerBackground: {
+    height: "100%",
+    width: "100%",
+  },
+  headerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.3)",
   },
   profileImageContainer: {
-    position: "relative",
-    marginBottom: 10,
+    position: "absolute",
+    bottom: -50,
+    left: 20,
   },
   profileImage: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
   },
-  verificationIcon: {
-    position: "absolute",
-    bottom: 5,
-    right: 5,
-    width: 40,
-    height: 40,
+  contentContainer: {
+    paddingTop: 60,
+    paddingHorizontal: 20,
+  },
+  nameContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
   },
   name: {
     fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 5,
+    color: "#000000",
+    marginRight: 5,
+  },
+  verificationIcon: {
+    width: 20,
+    height: 20,
   },
   bio: {
     fontSize: 16,
-    color: "gray",
-    textAlign: "center",
+    color: "#666666",
+    marginBottom: 15,
   },
   statsContainer: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    padding: 20,
-    backgroundColor: "white",
+    justifyContent: "flex-start",
+    marginBottom: 20,
   },
   statItem: {
+    marginRight: 20,
     alignItems: "center",
   },
   statNumber: {
     fontSize: 18,
     fontWeight: "bold",
+    color: "#000000",
   },
   statLabel: {
     fontSize: 14,
-    color: "gray",
+    color: "#666666",
   },
   editButton: {
-    margin: 20,
+    backgroundColor: "#007AFF",
+    padding: 10,
+    borderRadius: 20,
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  editButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "bold",
   },
   section: {
-    backgroundColor: "white",
-    padding: 20,
+    backgroundColor: "#FFFFFF",
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
+    color: "#000000",
     marginBottom: 10,
   },
-  sectionContent: {
-    fontSize: 16,
-    color: "gray",
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 
