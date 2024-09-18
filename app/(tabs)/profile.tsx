@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -9,46 +9,53 @@ import {
   ActivityIndicator,
   ImageBackground,
   TouchableOpacity,
-  Dimensions,
 } from "react-native";
 import { FIREBASE_AUTH } from "@/lib/firebase/firebaseConfig";
 import { getUserData } from "@/lib/firebase/getUsers";
 import { router } from "expo-router";
-import GetUserPosts from "@/components/GetUserPosts";
 import verification_icon from "@/assets/images/verification64.png";
-import user_icon from "@/assets/images/user.png";
+import user_icon from "@/assets/images/user.png"; // Local fallback image
 
 const ProfileScreen = () => {
   const user = FIREBASE_AUTH.currentUser;
+
   const [userData, setUserData] = useState({
-    name: "",
+    name: "Anonymous",
     profileImage: "",
-    bio: "",
+    bio: "No bio available",
     posts: 0,
     FriendCount: 0,
     verification: false,
-    verification_type: "",
+    verification_type: "gray",
     backgroundImage: "",
   });
+
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null); // Error handling
 
+  // Fetch user data function
   const fetchUserData = async () => {
     if (user) {
       try {
         const data = await getUserData(user.uid);
-        setUserData({
-          name: data.name || "Anonymous",
-          profileImage: data.profileImage || "",
-          bio: data.bio || "No bio available",
-          posts: data.postCount || 0,
-          FriendCount: data.FriendCount || 0,
-          verification: data.verification || false,
-          verification_type: data.verification_type || "gray",
-          backgroundImage: data.backgroundImage || "",
-        });
+        if (data) {
+          setUserData({
+            name: data.name || "Anonymous",
+            profileImage: data.profileImage || "", // Allow empty string fallback
+            bio: data.bio || "No bio available",
+            posts: data.postCount || 0,
+            FriendCount: data.FriendCount || 0,
+            verification: data.verification || false,
+            verification_type: data.verification_type || "gray",
+            backgroundImage: data.backgroundImage || "", // Allow empty string fallback
+          });
+        } else {
+          console.log("No user data found, using default values");
+        }
       } catch (error) {
         console.error("Error fetching user data:", error);
+        setError("Unable to fetch user data.");
       } finally {
         setLoading(false);
       }
@@ -56,23 +63,30 @@ const ProfileScreen = () => {
   };
 
   useEffect(() => {
-    fetchUserData();
+    if (user) {
+      fetchUserData();
+    }
+  }, [user]); // Only refetch when `user` changes
+
+  // Refresh control
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchUserData().finally(() => setRefreshing(false)); // Ensure refresh ends
   }, [user]);
 
   const handleEditProfile = () => {
     router.push("/editProfile");
   };
 
-  const onRefresh = React.useCallback(() => {
-    setRefreshing(true);
-    fetchUserData().then(() => setRefreshing(false));
-  }, []);
-
   return (
     <View style={styles.container}>
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#007AFF" />
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : (
         <ScrollView
@@ -81,17 +95,28 @@ const ProfileScreen = () => {
           }
         >
           <View style={styles.headerContainer}>
-            <ImageBackground
-              source={{ uri: userData.backgroundImage }}
-              style={styles.headerBackground}
-            >
-              <View style={styles.headerOverlay} />
-            </ImageBackground>
+            {userData.backgroundImage ? (
+              <ImageBackground
+                source={{ uri: userData.backgroundImage }}
+                style={styles.headerBackground}
+              >
+                <View style={styles.headerOverlay} />
+              </ImageBackground>
+            ) : (
+              <View style={styles.headerBackground}>
+                <View style={styles.headerOverlay} />
+              </View>
+            )}
+
             <View style={styles.profileImageContainer}>
-              <Image
-                style={styles.profileImage}
-                source={{ uri: userData.profileImage || user_icon }}
-              />
+              {userData.profileImage ? (
+                <Image
+                  style={styles.profileImage}
+                  source={{ uri: userData.profileImage }}
+                />
+              ) : (
+                <Image style={styles.profileImage} source={user_icon} /> // Fallback to local image
+              )}
             </View>
           </View>
 
@@ -212,19 +237,19 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "bold",
   },
-  section: {
-    backgroundColor: "#FFFFFF",
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#000000",
-    marginBottom: 10,
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  errorText: {
+    color: "red",
+    fontSize: 16,
   },
 });
 
